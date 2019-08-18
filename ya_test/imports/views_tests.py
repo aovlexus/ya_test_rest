@@ -54,3 +54,9 @@ def test_imports_should_create_import():
     assert r.status_code == status.HTTP_201_CREATED, r.json()
     assert Import.objects.all().count() == 1
     assert Citizen.objects.all().count() == 3
+    import_id = Import.objects.all()[0]
+    assert r.json() == {
+        "data": {
+            "import_id": import_id.pk
+        }
+    }

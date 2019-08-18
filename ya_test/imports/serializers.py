@@ -27,11 +27,12 @@ class CitizenSerializer(serializers.ModelSerializer):
 
 
 class ImportCreateSerializer(serializers.ModelSerializer):
-    citizens = CitizenSerializer(many=True)
+    citizens = CitizenSerializer(many=True, write_only=True)
+    import_id = serializers.IntegerField(source='pk', read_only=True)
 
     class Meta:
         model = Import
-        fields = ('citizens', )
+        fields = ('citizens', 'import_id', )
 
     def create(self, validated_data):
         citizens_data = validated_data.pop('citizens')
