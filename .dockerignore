@@ -1,0 +1,9 @@
+README.md
+public
+media
+
+.git
+*.pyc
+
+docker-compose.*
+Dockerfile
