@@ -17,6 +17,7 @@ class CitizenSerializer(serializers.ModelSerializer):
         fields = (
             'citizen_id',
             'town',
+            'name',
             'street',
             'building',
             'apartment',

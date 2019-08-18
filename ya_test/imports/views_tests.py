@@ -1,8 +1,12 @@
+from typing import List
+
 import pytest
+from django.conf import settings
 from rest_framework import status
 from rest_framework.reverse import reverse
 from rest_framework.test import APIClient
 
+from imports.factories import ImportFactory, CitizenFactory
 from imports.models import Import, Citizen
 
 
@@ -59,4 +63,47 @@ def test_imports_should_create_import():
         "data": {
             "import_id": import_id.pk
         }
+    }
+
+
+@pytest.mark.django_db
+def test_should_get_citizen():
+    i = ImportFactory.create()
+    c: List[Citizen] = [
+        CitizenFactory.create(data_import_id=i.pk),
+        CitizenFactory.create(data_import_id=i.pk)
+    ]
+    c = Citizen.objects.filter(id__in=[c[0].pk, c[1].pk])
+
+    client = APIClient()
+    url = reverse('imports-citizens', kwargs={'pk': i.pk})
+
+    r = client.get(url, format='json')
+
+    assert r.status_code == status.HTTP_200_OK, r.json()
+    assert r.json() == {
+        "data": [
+            {
+                "citizen_id": c[0].citizen_id,
+                "town": c[0].town,
+                "street": c[0].street,
+                "building": c[0].building,
+                "apartment": c[0].apartment,
+                "name": c[0].name,
+                "birth_date": c[0].birth_date.strftime(settings.DATE_FORMAT),
+                "gender": c[0].gender,
+                # "relatives": [1]
+            },
+            {
+                "citizen_id": c[1].citizen_id,
+                "town": c[1].town,
+                "street": c[1].street,
+                "building": c[1].building,
+                "apartment": c[1].apartment,
+                "name": c[1].name,
+                "birth_date": c[1].birth_date.strftime(settings.DATE_FORMAT),
+                "gender": c[1].gender,
+                # "relatives": [1]
+            },
+        ]
     }

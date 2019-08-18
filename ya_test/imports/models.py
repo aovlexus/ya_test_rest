@@ -20,6 +20,7 @@ class Citizen(models.Model):
         related_name='citizens',
         on_delete=models.DO_NOTHING
     )
+    name = models.CharField(max_length=512)
     citizen_id = models.PositiveIntegerField()
     town = models.CharField(max_length=512)
     street = models.CharField(max_length=512)
@@ -27,7 +28,20 @@ class Citizen(models.Model):
     apartment = models.PositiveIntegerField()
     birth_date = models.DateField()
     gender = models.CharField(max_length=6, choices=GENDER_CHOICES)
-    relatives = models.ManyToManyField(
-        'self',
-        symmetrical=True,
+
+    class Meta:
+        ordering = ('id', )
+        unique_together = ('citizen_id', 'data_import')
+
+
+class CitizenRelations(models.Model):
+    citizen_1 = models.ForeignKey(
+        Citizen,
+        on_delete=models.DO_NOTHING,
+        related_name='related_1'
+    )
+    citizen_2 = models.ForeignKey(
+        Citizen,
+        on_delete=models.DO_NOTHING,
+        related_name='related_2'
     )
