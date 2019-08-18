@@ -71,7 +71,7 @@ def test_imports_should_create_correct_relations():
     test_case = {
         "citizens": [
             {
-                "citizen_id": 1,
+                "citizen_id": 100,
                 "town": "Москва",
                 "street": "Льва Толстого",
                 "building": "16к7стр5",
@@ -79,10 +79,10 @@ def test_imports_should_create_correct_relations():
                 "name": "Иванов Иван Иванович",
                 "birth_date": "26.12.1986",
                 "gender": "male",
-                "relatives": [2, 3]
+                "relatives": [200, 300]
             },
             {
-                "citizen_id": 2,
+                "citizen_id": 200,
                 "town": "Москва",
                 "street": "Льва Толстого",
                 "building": "16к7стр5",
@@ -90,10 +90,10 @@ def test_imports_should_create_correct_relations():
                 "name": "Иванов Сергей Иванович",
                 "birth_date": "01.04.1997",
                 "gender": "male",
-                "relatives": [1]
+                "relatives": [100]
             },
             {
-                "citizen_id": 3,
+                "citizen_id": 300,
                 "town": "Керчь",
                 "street": "Иосифа Бродского",
                 "building": "2",
@@ -101,7 +101,7 @@ def test_imports_should_create_correct_relations():
                 "name": "Романова Мария Леонидовна",
                 "birth_date": "23.11.1986",
                 "gender": "female",
-                "relatives": [1]
+                "relatives": [100]
             },
         ]
     }
@@ -111,15 +111,16 @@ def test_imports_should_create_correct_relations():
 
     r = client.post(url, data=test_case, format='json')
 
-    assert r.status_code == status.HTTP_201_CREATED, r.json()
-    assert Import.objects.all().count() == 1
-    assert Citizen.objects.all().count() == 3
-    import_id = Import.objects.all()[0]
-    assert r.json() == {
-        "data": {
-            "import_id": import_id.pk
-        }
-    }
+    import_id = r.json()["data"]["import_id"]
+    assert set(
+        Citizen.objects.get(data_import_id=import_id, citizen_id=100).relatives
+    ) == {200, 300}
+    assert set(
+        Citizen.objects.get(data_import_id=import_id, citizen_id=200).relatives
+    ) == {100}
+    assert set(
+        Citizen.objects.get(data_import_id=import_id, citizen_id=300).relatives
+    ) == {100}
 
 
 @pytest.mark.django_db

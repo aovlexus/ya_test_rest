@@ -15,11 +15,11 @@ def test_citizen_get_with_relatives():
     ]
 
     relations = [
-        CitizenRelations(citizen_1=citizens[0], citizen_2=citizens[0]),
-        CitizenRelations(citizen_1=citizens[0], citizen_2=citizens[1]),
-        CitizenRelations(citizen_1=citizens[1], citizen_2=citizens[0]),
-        CitizenRelations(citizen_1=citizens[0], citizen_2=citizens[2]),
-        CitizenRelations(citizen_1=citizens[2], citizen_2=citizens[0]),
+        CitizenRelations(citizen_1=citizens[0], to_citizen_id=citizens[0].citizen_id),
+        CitizenRelations(citizen_1=citizens[0], to_citizen_id=citizens[1].citizen_id),
+        CitizenRelations(citizen_1=citizens[1], to_citizen_id=citizens[0].citizen_id),
+        CitizenRelations(citizen_1=citizens[0], to_citizen_id=citizens[2].citizen_id),
+        CitizenRelations(citizen_1=citizens[2], to_citizen_id=citizens[0].citizen_id),
     ]
 
     CitizenRelations.objects.bulk_create(relations)

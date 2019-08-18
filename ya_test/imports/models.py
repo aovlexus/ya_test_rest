@@ -14,8 +14,8 @@ class CitizenQuerySet(models.QuerySet):
         clone = self._chain()
         clone = clone.annotate(
             relatives=ArrayAgg(
-                'related_1__citizen_2__citizen_id',
-                filter=Q(related_1__citizen_2__isnull=False)
+                'related_1__to_citizen_id',
+                filter=Q(related_1__to_citizen_id__isnull=False)
 
             ),
         )
@@ -63,8 +63,5 @@ class CitizenRelations(models.Model):
         on_delete=models.DO_NOTHING,
         related_name='related_1'
     )
-    citizen_2 = models.ForeignKey(
-        Citizen,
-        on_delete=models.DO_NOTHING,
-        related_name='related_2'
-    )
+
+    to_citizen_id = models.IntegerField()

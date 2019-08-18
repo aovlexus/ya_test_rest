@@ -47,24 +47,28 @@ class ImportCreateSerializer(serializers.ModelSerializer):
         citizens_data = validated_data.pop('citizens')
         data_import = Import.objects.create(**validated_data)
         citizens = []
-        relations = set()
+        relations = []
 
         for citizen_data in citizens_data:
-            for relation in citizen_data.pop('relatives'):
-                relations.add((citizen_data['citizen_id'], relation))
+            relations.append(citizen_data.pop('relatives'))
             citizens.append(
                 Citizen(
                     data_import_id=data_import.pk,
                     **citizen_data
                 )
             )
-        Citizen.objects.bulk_create(citizens)
+        citizen_ids = Citizen.objects.bulk_create(citizens)
 
         citizen_relations = []
-        for relation in relations:
-            citizen_relations.append(
-                CitizenRelations(citizen_1=relation[0], citizen_2=relation[1])
-            )
+        for relation, citizen_pk in zip(relations, citizen_ids):
+            for citizen_id in relation:
+                citizen_relations.append(
+                    CitizenRelations(
+                        citizen_1=citizen_pk,
+                        to_citizen_id=citizen_id
+                    )
+                )
+
         CitizenRelations.objects.bulk_create(citizen_relations)
 
         return data_import
