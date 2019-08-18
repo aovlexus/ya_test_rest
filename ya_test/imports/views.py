@@ -1,3 +1,8 @@
-from django.shortcuts import render
+from rest_framework import viewsets
 
-# Create your views here.
+from imports.serializers import ImportCreateSerializer
+
+
+class ImportViewSet(viewsets.ModelViewSet):
+    serializer_class = ImportCreateSerializer
+

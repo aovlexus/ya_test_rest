@@ -19,16 +19,16 @@ services:
     depends_on:
       - db
     command: gunicorn --config /gunicorn.conf --reload --statsd-host=statsd:9125 ya_test.wsgi:application
+
   db:
     tty: true
-    image: postgres:10-alpine
+    image: postgres:11-alpine
     volumes:
-      - ./docker/postgres/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
       - postgres_db:/var/lib/postgresql/data
     environment:
-      DATABASE_NAME: ya_test
-      DATABASE_USER: ya_test
-      DATABASE_PASSWORD: 123456
+      POSTGRES_USER: ya_test
+      POSTGRES_DB: ya_test
+      POSTGRES_PASSWORD: 123456
     networks:
       - db
 
