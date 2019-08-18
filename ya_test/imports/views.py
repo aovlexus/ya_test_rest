@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
 from imports.models import Citizen, Import
-from imports.serializers import ImportCreateSerializer, CitizenSerializer
+from imports.serializers import ImportCreateSerializer, ReadCitizenSerializer
 
 
 class ImportViewSet(
@@ -32,8 +32,12 @@ class ImportViewSet(
     @action(['get'], detail=True)
     def citizens(self, request, *args, pk=None):
         data_import = self.get_object()
-        citizens = Citizen.objects.filter(data_import_id=data_import.pk)
-        serializer = CitizenSerializer(instance=citizens, many=True)
+        citizens = Citizen.objects.filter(
+            data_import_id=data_import.pk
+        ).order_by('id').with_relatives()
+
+        serializer = ReadCitizenSerializer(instance=citizens, many=True)
+
         headers = self.get_success_headers(serializer.data)
         return Response(
             OrderedDict([

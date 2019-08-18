@@ -67,6 +67,62 @@ def test_imports_should_create_import():
 
 
 @pytest.mark.django_db
+def test_imports_should_create_correct_relations():
+    test_case = {
+        "citizens": [
+            {
+                "citizen_id": 1,
+                "town": "Москва",
+                "street": "Льва Толстого",
+                "building": "16к7стр5",
+                "apartment": 7,
+                "name": "Иванов Иван Иванович",
+                "birth_date": "26.12.1986",
+                "gender": "male",
+                "relatives": [2, 3]
+            },
+            {
+                "citizen_id": 2,
+                "town": "Москва",
+                "street": "Льва Толстого",
+                "building": "16к7стр5",
+                "apartment": 7,
+                "name": "Иванов Сергей Иванович",
+                "birth_date": "01.04.1997",
+                "gender": "male",
+                "relatives": [1]
+            },
+            {
+                "citizen_id": 3,
+                "town": "Керчь",
+                "street": "Иосифа Бродского",
+                "building": "2",
+                "apartment": 11,
+                "name": "Романова Мария Леонидовна",
+                "birth_date": "23.11.1986",
+                "gender": "female",
+                "relatives": [1]
+            },
+        ]
+    }
+
+    client = APIClient()
+    url = reverse('imports-list')
+
+    r = client.post(url, data=test_case, format='json')
+
+    assert r.status_code == status.HTTP_201_CREATED, r.json()
+    assert Import.objects.all().count() == 1
+    assert Citizen.objects.all().count() == 3
+    import_id = Import.objects.all()[0]
+    assert r.json() == {
+        "data": {
+            "import_id": import_id.pk
+        }
+    }
+
+
+@pytest.mark.django_db
 def test_should_get_citizen():
     i = ImportFactory.create()
     c: List[Citizen] = [
@@ -92,7 +148,7 @@ def test_should_get_citizen():
                 "name": c[0].name,
                 "birth_date": c[0].birth_date.strftime(settings.DATE_FORMAT),
                 "gender": c[0].gender,
-                # "relatives": [1]
+                "relatives": c[0].relatives
             },
             {
                 "citizen_id": c[1].citizen_id,
@@ -103,7 +159,8 @@ def test_should_get_citizen():
                 "name": c[1].name,
                 "birth_date": c[1].birth_date.strftime(settings.DATE_FORMAT),
                 "gender": c[1].gender,
-                # "relatives": [1]
+                "relatives": c[1].relatives
             },
         ]
     }
+
