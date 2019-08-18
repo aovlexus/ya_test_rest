@@ -2,11 +2,25 @@ from django.contrib.postgres.aggregates import ArrayAgg
 from django.db import models
 
 # Create your models here.
-from django.db.models import OuterRef, Q, Subquery, F
+from django.db.models import Count, Q
+from django.db.models.functions import ExtractMonth
 
 
 class Import(models.Model):
-    pass
+    def get_months_birthdays_stats(self):
+        #  Due to relations are symmetrical (the exists for both citizens)
+        #  we can use "from_citizen"
+        #  as gift receiver :) and to_citizen_id as giver
+
+        return CitizenRelations.objects.filter(
+            citizen_1__data_import_id=self.pk
+        ).annotate(
+            month=ExtractMonth('citizen_1__birth_date')
+        ).values(
+            'month', 'to_citizen_id'
+        ).annotate(
+            birthdays=Count('id')
+        )
 
 
 class CitizenQuerySet(models.QuerySet):
