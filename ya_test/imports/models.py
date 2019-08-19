@@ -11,16 +11,16 @@ class Import(models.Model):
         #  Due to relations are symmetrical (the exists for both citizens)
         #  we can use "from_citizen"
         #  as gift receiver :) and to_citizen_id as giver
-
-        return CitizenRelations.objects.filter(
+        qs = CitizenRelations.objects.filter(
             citizen_1__data_import_id=self.pk
         ).annotate(
             month=ExtractMonth('citizen_1__birth_date')
         ).values(
             'month', 'to_citizen_id'
         ).annotate(
-            birthdays=Count('id')
-        )
+            birthdays=Count('citizen_1_id')
+        ).order_by('to_citizen_id')
+        return qs
 
 
 class CitizenQuerySet(models.QuerySet):

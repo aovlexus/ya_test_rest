@@ -47,10 +47,10 @@ def test_import_get_birthdays():
     # 3 - [] september
     data_import = ImportFactory.create()
     citizens = [
-        CitizenFactory.create(citizen_id=1, data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=4, year=2000)),
-        CitizenFactory.create(citizen_id=2, data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=4, year=1994)),
-        CitizenFactory.create(citizen_id=3, data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=8, year=2000)),
-        CitizenFactory.create(citizen_id=4, data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=9, year=1990)),
+        CitizenFactory.create(citizen_id=0, data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=4, year=2000)),
+        CitizenFactory.create(citizen_id=1, data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=4, year=1994)),
+        CitizenFactory.create(citizen_id=2, data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=8, year=2000)),
+        CitizenFactory.create(citizen_id=3, data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=9, year=1990)),
     ]
 
     relations = [
@@ -66,9 +66,9 @@ def test_import_get_birthdays():
     assert list(data_import.get_months_birthdays_stats().order_by(
         'month', 'to_citizen_id')
     ) == [
-        {'birthdays': 2, 'month': 4, 'to_citizen_id': 1},
+        {'birthdays': 2, 'month': 4, 'to_citizen_id': 0},
+        {'birthdays': 1, 'month': 4, 'to_citizen_id': 1},
         {'birthdays': 1, 'month': 4, 'to_citizen_id': 2},
-        {'birthdays': 1, 'month': 4, 'to_citizen_id': 3},
-        {'birthdays': 1, 'month': 8, 'to_citizen_id': 1}
+        {'birthdays': 1, 'month': 8, 'to_citizen_id': 0}
     ]
 

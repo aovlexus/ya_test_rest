@@ -1,3 +1,4 @@
+import datetime
 from typing import List
 
 import pytest
@@ -7,7 +8,7 @@ from rest_framework.reverse import reverse
 from rest_framework.test import APIClient
 
 from imports.factories import ImportFactory, CitizenFactory
-from imports.models import Import, Citizen
+from imports.models import Import, Citizen, CitizenRelations
 
 
 @pytest.mark.django_db
@@ -115,9 +116,11 @@ def test_imports_should_create_correct_relations():
     assert set(
         Citizen.objects.get(data_import_id=import_id, citizen_id=100).relatives
     ) == {200, 300}
+
     assert set(
         Citizen.objects.get(data_import_id=import_id, citizen_id=200).relatives
     ) == {100}
+
     assert set(
         Citizen.objects.get(data_import_id=import_id, citizen_id=300).relatives
     ) == {100}
@@ -163,5 +166,73 @@ def test_should_get_citizen():
                 "relatives": c[1].relatives
             },
         ]
+    }
+
+
+@pytest.mark.django_db
+def test_birthdays_should_return_correct_data():
+    # citizens:
+    # 0 - [0, 1, 2] april
+    # 1 - [0] april
+    # 2 - [2] august
+    # 3 - [] september
+
+    data_import = ImportFactory.create()
+    citizens = [
+        CitizenFactory.create(citizen_id=0, data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=4, year=2000)),
+        CitizenFactory.create(citizen_id=1, data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=4, year=1994)),
+        CitizenFactory.create(citizen_id=2, data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=8, year=2000)),
+        CitizenFactory.create(citizen_id=3, data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=9, year=1990)),
+    ]
+
+    relations = [
+        CitizenRelations(citizen_1=citizens[0], to_citizen_id=citizens[0].citizen_id),
+        CitizenRelations(citizen_1=citizens[0], to_citizen_id=citizens[1].citizen_id),
+        CitizenRelations(citizen_1=citizens[0], to_citizen_id=citizens[2].citizen_id),
+        CitizenRelations(citizen_1=citizens[1], to_citizen_id=citizens[0].citizen_id),
+        CitizenRelations(citizen_1=citizens[2], to_citizen_id=citizens[0].citizen_id),
+    ]
+    CitizenRelations.objects.bulk_create(relations)
+
+    client = APIClient()
+    url = reverse('imports-birthdays', kwargs={'pk': data_import.pk})
+
+    r = client.get(url, format='json')
+
+    print(r.json()['data']['4'])
+    assert r.status_code == status.HTTP_200_OK
+    assert r.json() == {
+        "data": {
+            "1": [],
+            "2": [],
+            "3": [],
+            "4": [
+                {
+                    "citizen_id": citizens[0].citizen_id,
+                    "presents": 2
+                },
+                {
+                    "citizen_id": citizens[1].citizen_id,
+                    "presents": 1
+                },
+                {
+                    "citizen_id": citizens[2].citizen_id,
+                    "presents": 1
+                },
+            ],
+            "5": [],
+            "6": [],
+            "7": [],
+            "8": [
+                {
+                    "citizen_id": citizens[0].citizen_id,
+                    "presents": 1
+                },
+            ],
+            "9": [],
+            "10": [],
+            "11": [],
+            "12": [],
+        }
     }
 
