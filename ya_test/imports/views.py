@@ -2,6 +2,7 @@ from collections import OrderedDict
 
 from rest_framework import mixins, status
 from rest_framework.decorators import action
+from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
@@ -9,7 +10,7 @@ from imports.models import Citizen, Import
 from imports.serializers import (
     GiftsImportReadSerializer,
     ImportCreateSerializer,
-    ReadCitizenSerializer,
+    CitizenSerializer,
 )
 
 
@@ -37,7 +38,32 @@ class ImportViewSet(
     def citizens(self, request, *args, pk=None):
         data_import = self.get_object()
         citizens = Citizen.objects.filter(data_import_id=data_import.pk)
-        serializer = ReadCitizenSerializer(instance=citizens, many=True)
+        serializer = CitizenSerializer(instance=citizens, many=True)
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            OrderedDict([
+                ('data', serializer.data)
+            ]),
+            headers=headers
+        )
+
+    @action(
+        ['patch'],
+        detail=True,
+        url_path=r'citizens/(?P<citizen_id>\d+)'
+    )
+    def citizen_update(self, request, *args, pk=None, citizen_id=None, **kwargs):
+        data_import = self.get_object()
+        citizens = Citizen.objects.filter(data_import_id=data_import.pk)
+        citizen = get_object_or_404(citizens, citizen_id=citizen_id)
+        serializer = CitizenSerializer(
+            instance=citizen,
+            data=request.data,
+            partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
 
         headers = self.get_success_headers(serializer.data)
         return Response(

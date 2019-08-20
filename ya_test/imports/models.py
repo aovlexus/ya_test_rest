@@ -53,6 +53,7 @@ class Citizen(models.Model):
         (GENDER_MALE, 'male'),
         (GENDER_FEMALE, 'female')
     )
+
     data_import = models.ForeignKey(
         Import,
         related_name='citizens',
@@ -79,3 +80,6 @@ class CitizenRelations(models.Model):
     )
 
     to_citizen_id = models.IntegerField()
+
+    def __str__(self):
+        return f'<CitizenRelation {self.citizen_1_id} -> {self.to_citizen_id}>'

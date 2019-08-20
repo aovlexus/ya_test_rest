@@ -129,11 +129,17 @@ def test_imports_should_create_correct_relations():
 @pytest.mark.django_db
 def test_should_get_citizen():
     i = ImportFactory.create()
-    c: List[Citizen] = [
+    citizens: List[Citizen] = [
         CitizenFactory.create(data_import_id=i.pk),
         CitizenFactory.create(data_import_id=i.pk)
     ]
-    c = Citizen.objects.filter(id__in=[c[0].pk, c[1].pk])
+    relations = [
+        CitizenRelations(citizen_1=citizens[0], to_citizen_id=citizens[1].citizen_id),
+        CitizenRelations(citizen_1=citizens[1], to_citizen_id=citizens[0].citizen_id),
+    ]
+    CitizenRelations.objects.bulk_create(relations)
+
+    citizens = Citizen.objects.filter(id__in=[citizens[0].pk, citizens[1].pk])
 
     client = APIClient()
     url = reverse('imports-citizens', kwargs={'pk': i.pk})
@@ -144,26 +150,26 @@ def test_should_get_citizen():
     assert r.json() == {
         "data": [
             {
-                "citizen_id": c[0].citizen_id,
-                "town": c[0].town,
-                "street": c[0].street,
-                "building": c[0].building,
-                "apartment": c[0].apartment,
-                "name": c[0].name,
-                "birth_date": c[0].birth_date.strftime(settings.DATE_FORMAT),
-                "gender": c[0].gender,
-                "relatives": c[0].relatives
+                "citizen_id": citizens[0].citizen_id,
+                "town": citizens[0].town,
+                "street": citizens[0].street,
+                "building": citizens[0].building,
+                "apartment": citizens[0].apartment,
+                "name": citizens[0].name,
+                "birth_date": citizens[0].birth_date.strftime(settings.DATE_FORMAT),
+                "gender": citizens[0].gender,
+                "relatives": [citizens[1].citizen_id]
             },
             {
-                "citizen_id": c[1].citizen_id,
-                "town": c[1].town,
-                "street": c[1].street,
-                "building": c[1].building,
-                "apartment": c[1].apartment,
-                "name": c[1].name,
-                "birth_date": c[1].birth_date.strftime(settings.DATE_FORMAT),
-                "gender": c[1].gender,
-                "relatives": c[1].relatives
+                "citizen_id": citizens[1].citizen_id,
+                "town": citizens[1].town,
+                "street": citizens[1].street,
+                "building": citizens[1].building,
+                "apartment": citizens[1].apartment,
+                "name": citizens[1].name,
+                "birth_date": citizens[1].birth_date.strftime(settings.DATE_FORMAT),
+                "gender": citizens[1].gender,
+                "relatives": [citizens[0].citizen_id]
             },
         ]
     }
@@ -235,3 +241,135 @@ def test_birthdays_should_return_correct_data():
         }
     }
 
+
+@pytest.mark.django_db
+def test_imports_should_patch_citizen():
+    data_import = ImportFactory()
+    CitizenFactory(
+        citizen_id=1, town="Москва", street="Льва Толстого",
+        building="16к7стр5", apartment=7, name="Иванов Иван Иванович",
+        birth_date=datetime.date(1994, 1, 1), gender="male",
+        data_import_id=data_import.pk
+    )
+    CitizenFactory(
+        citizen_id=2, town="Москва", street="Льва Толстого",
+        building="16к7стр7", apartment=7, name="Иванов Сергей Иванович",
+        birth_date=datetime.date(1980, 2, 2), gender="female",
+        data_import_id=data_import.pk
+
+    )
+
+    client = APIClient()
+    url = reverse('imports-citizen-update', kwargs={
+        'pk': data_import.pk, 'citizen_id': 1
+    })
+
+    r = client.patch(
+        url,
+        data={
+            "town": "Санкт-Петербург"
+        },
+        format='json'
+    )
+
+    assert r.status_code == status.HTTP_200_OK, r.json()
+    assert r.json() == {
+        "data": {
+            "citizen_id": 1,
+            "town": "Санкт-Петербург",
+            "street": "Льва Толстого",
+            "building": "16к7стр5",
+            "apartment": 7,
+            "name": "Иванов Иван Иванович",
+            "birth_date": "01.01.1994",
+            "gender": "male",
+            "relatives": []
+        }
+    }
+
+
+@pytest.mark.django_db
+def test_imports_should_patch_citizen_relatives():
+    data_import = ImportFactory()
+    citizens = [
+        CitizenFactory(
+            citizen_id=1, town="Москва", street="Льва Толстого",
+            building="16к7стр5", apartment=7, name="Иванов Иван Иванович",
+            birth_date=datetime.date(1994, 1, 1), gender="male",
+            data_import_id=data_import.pk
+        ),
+        CitizenFactory(
+            citizen_id=200, town="Москва", street="Льва Толстого",
+            building="16к7стр7", apartment=7, name="Иванов Сергей Иванович",
+            birth_date=datetime.date(1980, 2, 2), gender="female",
+            data_import_id=data_import.pk
+
+        )
+    ]
+
+    client = APIClient()
+    url = reverse('imports-citizen-update', kwargs={
+        'pk': data_import.pk, 'citizen_id': 1
+    })
+
+    r = client.patch(
+        url,
+        data={
+            "town": "Санкт-Петербург",
+            "relatives": [200]
+        },
+        format='json'
+    )
+
+    assert r.status_code == status.HTTP_200_OK, r.json()
+
+    citizens[1] = Citizen.objects.filter(pk=citizens[1].pk)[0]
+    assert citizens[1].relatives == [1]
+
+    assert r.json() == {
+        "data": {
+            "citizen_id": 1,
+            "town": "Санкт-Петербург",
+            "street": "Льва Толстого",
+            "building": "16к7стр5",
+            "apartment": 7,
+            "name": "Иванов Иван Иванович",
+            "birth_date": "01.01.1994",
+            "gender": "male",
+            "relatives": [200]
+        }
+    }
+
+
+@pytest.mark.django_db
+def test_imports_should_return_400_on_wrong_relative():
+    data_import = ImportFactory()
+    CitizenFactory(
+        citizen_id=1, town="Москва", street="Льва Толстого",
+        building="16к7стр5", apartment=7, name="Иванов Иван Иванович",
+        birth_date=datetime.date(1994, 1, 1), gender="male",
+        data_import_id=data_import.pk
+    )
+    CitizenFactory(
+        citizen_id=2, town="Москва", street="Льва Толстого",
+        building="16к7стр7", apartment=7, name="Иванов Сергей Иванович",
+        birth_date=datetime.date(1980, 2, 2), gender="female",
+        data_import_id=data_import.pk
+
+    )
+
+    client = APIClient()
+    url = reverse('imports-citizen-update', kwargs={
+        'pk': data_import.pk, 'citizen_id': 1
+    })
+
+    r = client.patch(
+        url,
+        data={
+            "town": "Санкт-Петербург",
+            "relatives": [4]
+        },
+        format='json'
+    )
+
+    assert r.status_code == status.HTTP_400_BAD_REQUEST, r.json()

@@ -1,15 +1,21 @@
 from collections import OrderedDict, defaultdict
 
 from django.conf import settings
+from django.db.transaction import atomic
 from rest_framework import serializers
 
 from imports.models import Citizen, CitizenRelations, Import
 
 
-class BaseCitizenSerializer(serializers.ModelSerializer):
+class CitizenSerializer(serializers.ModelSerializer):
     birth_date = serializers.DateField(
         format=settings.DATE_FORMAT,
         input_formats=[settings.DATE_FORMAT]
+    )
+    relatives = serializers.ListField(
+        child=serializers.IntegerField(),
+        read_only=False,
+        write_only=False
     )
 
     class Meta:
@@ -26,19 +32,40 @@ class BaseCitizenSerializer(serializers.ModelSerializer):
             'relatives',
         )
 
+    @atomic()
+    def update(self, instance, validated_data):
+        relatives = validated_data.pop('relatives', None)
+        instance = super().update(instance, validated_data)
+        if relatives is not None:
+            citizens = Citizen.objects.filter(
+                citizen_id__in=relatives
+            ).values('pk', 'citizen_id')
+            citizens_map = {
+                citizen['citizen_id']: citizen['pk']
+                for citizen in citizens
+            }
+            relations = []
+            for relative in relatives:
+                if relative not in citizens_map:
+                    raise serializers.ValidationError()
 
-class ReadCitizenSerializer(BaseCitizenSerializer):
-    relatives = serializers.ListField(serializers.IntegerField())
+                relations.append(CitizenRelations(
+                    citizen_1_id=instance.pk,
+                    to_citizen_id=relative
+                ))
+                relations.append(CitizenRelations(
+                    citizen_1_id=citizens_map[relative],
+                    to_citizen_id=instance.citizen_id
+                ))
 
+            CitizenRelations.objects.bulk_create(relations)
+            setattr(instance, 'relatives', relatives)
 
-class CreateCitizenSerializer(BaseCitizenSerializer):
-    relatives = serializers.ListField(
-        write_only=True,
-    )
+        return instance
 
 
 class ImportCreateSerializer(serializers.ModelSerializer):
-    citizens = CreateCitizenSerializer(many=True, write_only=True)
+    citizens = CitizenSerializer(many=True, write_only=True)
     import_id = serializers.IntegerField(source='pk', read_only=True)
 
     class Meta:
@@ -54,6 +81,7 @@ class ImportCreateSerializer(serializers.ModelSerializer):
                 except KeyError:
                     raise serializers.ValidationError()
 
+    @atomic()
     def create(self, validated_data):
         citizens_data = validated_data.pop('citizens')
         data_import = Import.objects.create(**validated_data)
