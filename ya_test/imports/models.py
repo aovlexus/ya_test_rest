@@ -22,6 +22,18 @@ class Import(models.Model):
         ).order_by('to_citizen_id')
         return qs
 
+    def get_percentile(self):
+        qs = CitizenRelations.objects.filter(
+            citizen_1__data_import_id=self.pk
+        ).annotate(
+            month=ExtractMonth('citizen_1__birth_date')
+        ).values(
+            'month', 'to_citizen_id'
+        ).annotate(
+            birthdays=Count('citizen_1_id')
+        ).order_by('to_citizen_id')
+        return qs
+
 
 class CitizenQuerySet(models.QuerySet):
     def with_relatives(self):

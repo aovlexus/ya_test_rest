@@ -10,6 +10,7 @@ from imports.serializers import (
     GiftsImportReadSerializer,
     ImportCreateSerializer,
     ReadCitizenSerializer,
+    PercentileImportReadSerializer,
 )
 
 
@@ -51,6 +52,18 @@ class ImportViewSet(
     def birthdays(self, request, *args, pk=None):
         data_import: Import = self.get_object()
         serializer = GiftsImportReadSerializer(instance=data_import)
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            OrderedDict([
+                ('data', serializer.data)
+            ]),
+            headers=headers
+        )
+
+    @action(['get'], detail=True, url_path='/towns/stat/percentile/age')
+    def towns_stat_percentile_age(self, request, *args, pk=None):
+        data_import: Import = self.get_object()
+        serializer = PercentileImportReadSerializer(instance=data_import)
         headers = self.get_success_headers(serializer.data)
         return Response(
             OrderedDict([

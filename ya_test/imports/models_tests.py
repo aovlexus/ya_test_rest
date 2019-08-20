@@ -72,3 +72,24 @@ def test_import_get_birthdays():
         {'birthdays': 1, 'month': 8, 'to_citizen_id': 0}
     ]
 
+
+@pytest.mark.django_db
+def test_import_get_percentile():
+    # citizens:
+    # 0 - [0, 1, 2] april
+    # 1 - [0] april
+    # 2 - [2] august
+    # 3 - [] september
+    data_import = ImportFactory.create()
+    citizens = [
+        CitizenFactory.create(data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=4, year=2000)),
+        CitizenFactory.create(data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=4, year=1994)),
+        CitizenFactory.create(data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=8, year=2000)),
+        CitizenFactory.create(data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=9, year=1990)),
+        CitizenFactory.create(data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=9, year=1980)),
+        CitizenFactory.create(data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=9, year=2014)),
+        CitizenFactory.create(data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=9, year=1995)),
+        CitizenFactory.create(data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=9, year=1996)),
+    ]
+    pass
+

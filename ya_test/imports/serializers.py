@@ -96,3 +96,25 @@ class GiftsImportReadSerializer(serializers.Serializer):
 
     def update(self, instance, validated_data):
         raise NotImplementedError
+
+
+class PercentileImportReadSerializer(serializers.Serializer):
+    def to_representation(self, instance):
+        instance = instance.get_months_birthdays_stats()
+        result = defaultdict(list)
+        for line in instance:
+            result[line['month']].append(
+                {
+                    'citizen_id': line['to_citizen_id'],
+                    'presents': line['birthdays']
+                }
+            )
+        for month_number in range(1, 13):
+            result[month_number] = result[month_number]
+        return result
+
+    def create(self, validated_data):
+        raise NotImplementedError
+
+    def update(self, instance, validated_data):
+        raise NotImplementedError
