@@ -48,7 +48,7 @@ class ImportViewSet(
         )
 
     @action(['get'], detail=True, url_path='/citizens/birthdays')
-    def birthdays(self, request, *args, pk=None):
+    def citizens_birthdays(self, request, *args, pk=None):
         data_import: Import = self.get_object()
         serializer = GiftsImportReadSerializer(instance=data_import)
         headers = self.get_success_headers(serializer.data)

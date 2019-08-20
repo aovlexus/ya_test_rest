@@ -195,11 +195,10 @@ def test_birthdays_should_return_correct_data():
     CitizenRelations.objects.bulk_create(relations)
 
     client = APIClient()
-    url = reverse('imports-birthdays', kwargs={'pk': data_import.pk})
+    url = reverse('imports-citizens-birthdays', kwargs={'pk': data_import.pk})
 
     r = client.get(url, format='json')
 
-    print(r.json()['data']['4'])
     assert r.status_code == status.HTTP_200_OK
     assert r.json() == {
         "data": {
