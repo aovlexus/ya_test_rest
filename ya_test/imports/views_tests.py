@@ -130,14 +130,9 @@ def test_imports_should_create_correct_relations():
 def test_should_get_citizen():
     i = ImportFactory.create()
     citizens: List[Citizen] = [
-        CitizenFactory.create(data_import_id=i.pk),
-        CitizenFactory.create(data_import_id=i.pk)
+        CitizenFactory.create(data_import_id=i.pk, relatives=[2], citizen_id=1),
+        CitizenFactory.create(data_import_id=i.pk, relatives=[1], citizen_id=2)
     ]
-    relations = [
-        CitizenRelations(citizen_1=citizens[0], to_citizen_id=citizens[1].citizen_id),
-        CitizenRelations(citizen_1=citizens[1], to_citizen_id=citizens[0].citizen_id),
-    ]
-    CitizenRelations.objects.bulk_create(relations)
 
     citizens = Citizen.objects.filter(id__in=[citizens[0].pk, citizens[1].pk])
 
@@ -177,28 +172,13 @@ def test_should_get_citizen():
 
 @pytest.mark.django_db
 def test_birthdays_should_return_correct_data():
-    # citizens:
-    # 0 - [0, 1, 2] april
-    # 1 - [0] april
-    # 2 - [2] august
-    # 3 - [] september
-
     data_import = ImportFactory.create()
     citizens = [
-        CitizenFactory.create(citizen_id=0, data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=4, year=2000)),
-        CitizenFactory.create(citizen_id=1, data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=4, year=1994)),
-        CitizenFactory.create(citizen_id=2, data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=8, year=2000)),
-        CitizenFactory.create(citizen_id=3, data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=9, year=1990)),
+        CitizenFactory.create(citizen_id=0, data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=4, year=2000), relatives=[0, 1, 2]),  # NOQA
+        CitizenFactory.create(citizen_id=1, data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=4, year=1994), relatives=[0]),  # NOQA
+        CitizenFactory.create(citizen_id=2, data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=8, year=2000), relatives=[0]),  # NOQA
+        CitizenFactory.create(citizen_id=3, data_import_id=data_import.pk, birth_date=datetime.date(day=1, month=9, year=1990)),  # NOQA
     ]
-
-    relations = [
-        CitizenRelations(citizen_1=citizens[0], to_citizen_id=citizens[0].citizen_id),
-        CitizenRelations(citizen_1=citizens[0], to_citizen_id=citizens[1].citizen_id),
-        CitizenRelations(citizen_1=citizens[0], to_citizen_id=citizens[2].citizen_id),
-        CitizenRelations(citizen_1=citizens[1], to_citizen_id=citizens[0].citizen_id),
-        CitizenRelations(citizen_1=citizens[2], to_citizen_id=citizens[0].citizen_id),
-    ]
-    CitizenRelations.objects.bulk_create(relations)
 
     client = APIClient()
     url = reverse('imports-citizens-birthdays', kwargs={'pk': data_import.pk})
@@ -243,7 +223,7 @@ def test_birthdays_should_return_correct_data():
 
 
 @pytest.mark.django_db
-def test_imports_should_patch_citizen():
+def test_citizens_patch_should_update_data():
     data_import = ImportFactory()
     CitizenFactory(
         citizen_id=1, town="Москва", street="Льва Толстого",
@@ -289,7 +269,7 @@ def test_imports_should_patch_citizen():
 
 
 @pytest.mark.django_db
-def test_imports_should_patch_citizen_relatives():
+def test_citizens_patch_should_create_relatives():
     data_import = ImportFactory()
     citizens = [
         CitizenFactory(
@@ -342,7 +322,142 @@ def test_imports_should_patch_citizen_relatives():
 
 
 @pytest.mark.django_db
-def test_imports_should_return_400_on_wrong_relative():
+def test_citizens_patch_should_change_relatives():
+    data_import = ImportFactory()
+    citizens = [
+        CitizenFactory(
+            citizen_id=100, town="Москва", street="Льва Толстого",
+            building="16к7стр5", apartment=7, name="Иванов Иван Иванович",
+            birth_date=datetime.date(1994, 1, 1), gender="male",
+            data_import_id=data_import.pk, relatives=[200, 400]
+        ),
+        CitizenFactory(
+            citizen_id=200, town="Москва", street="Льва Толстого",
+            building="16к7стр7", apartment=7, name="Иванова Мария Петровна",
+            birth_date=datetime.date(1980, 2, 2), gender="female",
+            data_import_id=data_import.pk, relatives=[100]
+
+        ),
+        CitizenFactory(
+            citizen_id=300, town="Санкт-Петербург", street="Тверская",
+            building="16к7стр7", apartment=7, name="Сергеев Сергей Иванович",
+            birth_date=datetime.date(1983, 2, 2), gender="male",
+            data_import_id=data_import.pk, relatives=[]
+
+        ),
+        CitizenFactory(
+            citizen_id=400, town="Москва", street="Тверская",
+            building="16к7стр7", apartment=7, name="Сергеев Иван Иванович",
+            birth_date=datetime.date(1988, 3, 3), gender="male",
+            data_import_id=data_import.pk, relatives=[100]
+
+        )
+    ]
+
+    client = APIClient()
+    url = reverse('imports-citizen-update', kwargs={
+        'pk': data_import.pk, 'citizen_id': 100
+    })
+
+    r = client.patch(
+        url,
+        data={
+            "town": "Санкт-Петербург",
+            "relatives": [300, 200]
+        },
+        format='json'
+    )
+
+    assert r.status_code == status.HTTP_200_OK, r.json()
+
+    citizens[1] = Citizen.objects.filter(pk=citizens[1].pk)[0]
+    assert citizens[1].relatives == [100]
+
+    citizens[2] = Citizen.objects.filter(pk=citizens[2].pk)[0]
+    assert citizens[2].relatives == [100]
+
+    citizens[3] = Citizen.objects.filter(pk=citizens[3].pk)[0]
+    assert citizens[3].relatives == []
+
+    assert r.json() == {
+        "data": {
+            "citizen_id": 100,
+            "town": "Санкт-Петербург",
+            "street": "Льва Толстого",
+            "building": "16к7стр5",
+            "apartment": 7,
+            "name": "Иванов Иван Иванович",
+            "birth_date": "01.01.1994",
+            "gender": "male",
+            "relatives": [300, 200]
+        }
+    }
+
+
+@pytest.mark.django_db
+def test_citizens_patch_should_remove_relatives():
+    data_import = ImportFactory()
+    citizens = [
+        CitizenFactory(
+            citizen_id=100, town="Москва", street="Льва Толстого",
+            building="16к7стр5", apartment=7, name="Иванов Иван Иванович",
+            birth_date=datetime.date(1994, 1, 1), gender="male",
+            data_import_id=data_import.pk, relatives=[200]
+        ),
+        CitizenFactory(
+            citizen_id=200, town="Москва", street="Льва Толстого",
+            building="16к7стр7", apartment=7, name="Иванова Мария Петровна",
+            birth_date=datetime.date(1980, 2, 2), gender="female",
+            data_import_id=data_import.pk, relatives=[100]
+
+        ),
+        CitizenFactory(
+            citizen_id=300, town="Москва", street="Тверская",
+            building="16к7стр7", apartment=7, name="Сергеев Сергей Иванович",
+            birth_date=datetime.date(1983, 2, 2), gender="male",
+            data_import_id=data_import.pk, relatives=[]
+
+        )
+    ]
+
+    client = APIClient()
+    url = reverse('imports-citizen-update', kwargs={
+        'pk': data_import.pk, 'citizen_id': 100
+    })
+
+    r = client.patch(
+        url,
+        data={
+            "relatives": []
+        },
+        format='json'
+    )
+
+    assert r.status_code == status.HTTP_200_OK, r.json()
+
+    citizens[1] = Citizen.objects.filter(pk=citizens[1].pk)[0]
+    assert citizens[1].relatives == []
+
+    citizens[2] = Citizen.objects.filter(pk=citizens[2].pk)[0]
+    assert citizens[2].relatives == []
+
+    assert r.json() == {
+        "data": {
+            "citizen_id": 100,
+            "town": "Москва",
+            "street": "Льва Толстого",
+            "building": "16к7стр5",
+            "apartment": 7,
+            "name": "Иванов Иван Иванович",
+            "birth_date": "01.01.1994",
+            "gender": "male",
+            "relatives": []
+        }
+    }
+
+
+@pytest.mark.django_db
+def test_citizens_patch_should_return_400_on_wrong_relative():
     data_import = ImportFactory()
     CitizenFactory(
         citizen_id=1, town="Москва", street="Льва Толстого",

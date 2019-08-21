@@ -1,6 +1,5 @@
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.db import models
-
 # Create your models here.
 from django.db.models import Count, Q
 from django.db.models.functions import ExtractMonth
@@ -12,13 +11,13 @@ class Import(models.Model):
         #  we can use "from_citizen"
         #  as gift receiver :) and to_citizen_id as giver
         qs = CitizenRelations.objects.filter(
-            citizen_1__data_import_id=self.pk
+            from_citizen__data_import_id=self.pk
         ).annotate(
-            month=ExtractMonth('citizen_1__birth_date')
+            month=ExtractMonth('from_citizen__birth_date')
         ).values(
             'month', 'to_citizen_id'
         ).annotate(
-            birthdays=Count('citizen_1_id')
+            birthdays=Count('from_citizen_id')
         ).order_by('to_citizen_id')
         return qs
 
@@ -57,10 +56,11 @@ class Citizen(models.Model):
     data_import = models.ForeignKey(
         Import,
         related_name='citizens',
-        on_delete=models.DO_NOTHING
+        on_delete=models.DO_NOTHING,
+        db_index=True
     )
     name = models.CharField(max_length=512)
-    citizen_id = models.PositiveIntegerField()
+    citizen_id = models.PositiveIntegerField(db_index=True)
     town = models.CharField(max_length=512)
     street = models.CharField(max_length=512)
     building = models.CharField(max_length=512)
@@ -71,15 +71,54 @@ class Citizen(models.Model):
     class Meta:
         unique_together = ('citizen_id', 'data_import')
 
+    def remove_all_relatives(self):
+        CitizenRelations.objects.filter(
+            from_citizen_id=self.pk
+        ).delete()
+        CitizenRelations.objects.filter(
+            to_citizen_id=self.citizen_id
+        ).delete()
+
+    def set_relatives(self, relatives):
+        self.remove_all_relatives()
+
+        citizens = Citizen.objects.filter(
+            citizen_id__in=relatives
+        ).values('pk', 'citizen_id')
+
+        citizens_map = {
+            citizen['citizen_id']: citizen['pk']
+            for citizen in citizens
+        }
+
+        relations = []
+        for relative in relatives:
+
+            if relative not in citizens_map:
+                raise Citizen.DoesNotExist
+
+            relations.append(CitizenRelations(
+                from_citizen_id=self.pk,
+                to_citizen_id=relative
+            ))
+            relations.append(CitizenRelations(
+                from_citizen_id=citizens_map[relative],
+                to_citizen_id=self.citizen_id
+            ))
+
+        CitizenRelations.objects.bulk_create(relations)
+        setattr(self, 'relatives', relatives)
+
 
 class CitizenRelations(models.Model):
-    citizen_1 = models.ForeignKey(
+    from_citizen = models.ForeignKey(
         Citizen,
         on_delete=models.DO_NOTHING,
-        related_name='related_1'
+        related_name='related_1',
+        db_index=True
     )
 
-    to_citizen_id = models.IntegerField()
+    to_citizen_id = models.IntegerField(db_index=True)
 
     def __str__(self):
-        return f'<CitizenRelation {self.citizen_1_id} -> {self.to_citizen_id}>'
+        return f'CitizenRelation {self.from_citizen_id} -> {self.to_citizen_id}'

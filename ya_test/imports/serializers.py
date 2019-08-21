@@ -35,31 +35,13 @@ class CitizenSerializer(serializers.ModelSerializer):
     @atomic()
     def update(self, instance, validated_data):
         relatives = validated_data.pop('relatives', None)
-        instance = super().update(instance, validated_data)
+        instance: Citizen = super().update(instance, validated_data)
+
         if relatives is not None:
-            citizens = Citizen.objects.filter(
-                citizen_id__in=relatives
-            ).values('pk', 'citizen_id')
-            citizens_map = {
-                citizen['citizen_id']: citizen['pk']
-                for citizen in citizens
-            }
-            relations = []
-            for relative in relatives:
-                if relative not in citizens_map:
-                    raise serializers.ValidationError()
-
-                relations.append(CitizenRelations(
-                    citizen_1_id=instance.pk,
-                    to_citizen_id=relative
-                ))
-                relations.append(CitizenRelations(
-                    citizen_1_id=citizens_map[relative],
-                    to_citizen_id=instance.citizen_id
-                ))
-
-            CitizenRelations.objects.bulk_create(relations)
-            setattr(instance, 'relatives', relatives)
+            try:
+                instance.set_relatives(relatives)
+            except Citizen.DoesNotExist:
+                raise serializers.ValidationError()
 
         return instance
 
@@ -107,7 +89,7 @@ class ImportCreateSerializer(serializers.ModelSerializer):
             for citizen_id in relation:
                 citizen_relations.append(
                     CitizenRelations(
-                        citizen_1=citizen_pk,
+                        from_citizen=citizen_pk,
                         to_citizen_id=citizen_id
                     )
                 )
