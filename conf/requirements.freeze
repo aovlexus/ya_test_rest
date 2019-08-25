@@ -20,3 +20,4 @@ sqlparse==0.3.0
 text-unidecode==1.2
 wcwidth==0.1.7
 zipp==0.5.2
+gunicorn==19.9.0
