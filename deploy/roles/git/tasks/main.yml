@@ -1,0 +1,16 @@
+---
+
+- name: Setup the Git repo
+  git: repo={{ git_repo }}
+       version="{{ git_branch }}"
+       dest={{ project_path }}
+       accept_hostkey=yes
+       key_file=/home/ubuntu/.ssh/id_rsa_bitbucket
+  tags: git, deploy, deploy-quick
+
+- name: Delete all .pyc files
+  become: yes
+  command: find . -name '*.pyc' -delete
+  args:
+    chdir: "{{ project_path }}"
+  tags: git, deploy

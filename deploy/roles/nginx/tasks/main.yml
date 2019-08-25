@@ -1,0 +1,38 @@
+---
+- name: Ensure that the application file permissions are set properly
+  file: path={{ virtualenv_path }}
+        recurse=yes
+        owner={{ gunicorn_user }}
+        group={{ gunicorn_group }}
+        state=directory
+  notify: restart application
+  tags: nginx
+
+- name: Install Nginx
+  apt: name=nginx  state=installed
+  tags: packages, nginx
+
+- name: Create the Nginx config file without SSL
+  when: ssl_enabled is undefined or not ssl_enabled
+  template: src=nginx_site_config.j2
+            dest=/etc/nginx/sites-available/{{ application_name }}
+            backup=yes
+  notify: reload nginx
+  tags: nginx
+
+- name: Ensure that the default site is disabled
+  command: rm /etc/nginx/sites-enabled/default
+           removes=/etc/nginx/sites-enabled/default
+  notify: reload nginx
+  tags: nginx
+
+- name: Ensure that the application site is enabled
+  command: ln -s /etc/nginx/sites-available/{{ application_name }}
+           /etc/nginx/sites-enabled/{{ application_name }}
+           creates=/etc/nginx/sites-enabled/{{ application_name }}
+  notify: reload nginx
+  tags: nginx
+
+- name: Ensure Nginx service is started
+  service: name=nginx state=started enabled=yes
+  tags: nginx

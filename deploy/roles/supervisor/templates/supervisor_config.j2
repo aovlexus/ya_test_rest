@@ -1,0 +1,5 @@
+[program:{{ application_name }}]
+command = {{ gunicorn_start_script_file }}
+user = {{ gunicorn_user }}
+stdout_logfile = {{ application_log_file }}
+redirect_stderr = true
