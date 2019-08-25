@@ -18,7 +18,7 @@ services:
       - db
     depends_on:
       - db
-    command: gunicorn --config /gunicorn.conf --reload --statsd-host=statsd:9125 ya_test.wsgi:application
+    command: gunicorn --config /gunicorn.conf --reload ya_test.wsgi:application
 
   db:
     tty: true
